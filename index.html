@@ -108,246 +108,259 @@
   <div id="message"></div>
   <div id="games"></div>
 
-  <script>
-    const SUPABASE_URL = "https://zucfkzsezszqpqgxfxcy.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Y2ZrenNlenN6cXBxZ3hmeGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4OTQ2MjEsImV4cCI6MjA4ODQ3MDYyMX0.xThmpDCkVhY4_fqFNuDalH-2zRAiiqoNk7oRk4xWvq8";
+ <script>
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = "https://zucfkzsezszgpqgxfzcy.supabase.co";
+const SUPABASE_ANON_KEY = "PLAATS_HIER_JE_ANON_KEY";
 
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const signupBtn = document.getElementById("signupBtn");
-    const loginBtn = document.getElementById("loginBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const userInfo = document.getElementById("userInfo");
-    const adminPanel = document.getElementById("adminPanel");
-    const resetVotesBtn = document.getElementById("resetVotesBtn");
-    const gamesContainer = document.getElementById("games");
-    const messageEl = document.getElementById("message");
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
-    let currentUser = null;
-    let isAdmin = false;
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const signupBtn = document.getElementById("signupBtn");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const userInfo = document.getElementById("userInfo");
+const adminPanel = document.getElementById("adminPanel");
+const resetVotesBtn = document.getElementById("resetVotesBtn");
+const gamesContainer = document.getElementById("games");
+const messageEl = document.getElementById("message");
 
-    function showMessage(text, color = "white") {
-      messageEl.textContent = text;
-      messageEl.style.color = color;
-    }
+let currentUser = null;
+let isAdmin = false;
 
-    async function signUp() {
-      const email = emailInput.value.trim();
-      const password = passwordInput.value.trim();
+function showMessage(text, color = "white") {
+  messageEl.textContent = text;
+  messageEl.style.color = color;
+}
 
-      if (!email || !password) {
-        showMessage("Fill in email and password.", "#ff5555");
-        return;
-      }
+async function signUp() {
 
-      const { error } = await supabase.auth.signUp({
-        email,
-        password
-      });
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
 
-      if (error) {
-        showMessage(error.message, "#ff5555");
-        return;
-      }
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
 
-      showMessage("Account created. If email confirmation is enabled, confirm your mail first.", "#10b981");
-    }
+  if (error) {
+    showMessage(error.message, "red");
+    return;
+  }
 
-    async function logIn() {
-      const email = emailInput.value.trim();
-      const password = passwordInput.value.trim();
+  showMessage("Account created", "lime");
 
-      if (!email || !password) {
-        showMessage("Fill in email and password.", "#ff5555");
-        return;
-      }
+}
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+async function logIn() {
 
-      if (error) {
-        showMessage(error.message, "#ff5555");
-        return;
-      }
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
 
-      showMessage("Logged in.", "#10b981");
-      await refreshSessionAndRender();
-    }
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
 
-    async function logOut() {
-      await supabase.auth.signOut();
-      showMessage("Logged out.", "#f59e0b");
-      await refreshSessionAndRender();
-    }
+  if (error) {
+    showMessage(error.message, "red");
+    return;
+  }
 
-    async function fetchAdminStatus() {
-      if (!currentUser) {
-        isAdmin = false;
-        adminPanel.style.display = "none";
-        return;
-      }
+  showMessage("Logged in", "lime");
+  refreshSessionAndRender();
+}
 
-      const { data, error } = await supabase.rpc("is_admin");
+async function logOut() {
 
-      if (error) {
-        isAdmin = false;
-        adminPanel.style.display = "none";
-        return;
-      }
+  await supabaseClient.auth.signOut();
+  showMessage("Logged out", "orange");
+  refreshSessionAndRender();
 
-      isAdmin = !!data;
-      adminPanel.style.display = isAdmin ? "block" : "none";
-    }
+}
 
-    async function fetchGames() {
-      const { data, error } = await supabase.rpc("get_games_with_votes");
+async function fetchAdminStatus() {
 
-      if (error) {
-        showMessage("Could not load games: " + error.message, "#ff5555");
-        return [];
-      }
+  if (!currentUser) {
+    isAdmin = false;
+    adminPanel.style.display = "none";
+    return;
+  }
 
-      return data || [];
-    }
+  const { data, error } = await supabaseClient.rpc("is_admin");
 
-    async function toggleVote(gameName) {
-      if (!currentUser) {
-        showMessage("Log in first.", "#ff5555");
-        return;
-      }
+  if (error) {
+    isAdmin = false;
+    adminPanel.style.display = "none";
+    return;
+  }
 
-      const { data, error } = await supabase.rpc("toggle_vote", {
-        p_game_name: gameName
-      });
+  isAdmin = !!data;
+  adminPanel.style.display = isAdmin ? "block" : "none";
 
-      if (error) {
-        showMessage("Vote failed: " + error.message, "#ff5555");
-        return;
-      }
+}
 
-      if (data?.user_voted) {
-        showMessage(`You voted for ${gameName}.`, "#10b981");
-      } else {
-        showMessage(`Your vote for ${gameName} was removed.`, "#f59e0b");
-      }
+async function fetchGames() {
 
-      await renderGames();
-    }
+  const { data, error } = await supabaseClient.rpc("get_games_with_votes");
 
-    async function setGameStatus(gameName, status) {
-      if (!isAdmin) return;
+  if (error) {
+    showMessage(error.message, "red");
+    return [];
+  }
 
-      const { error } = await supabase.rpc("set_game_status", {
-        p_game_name: gameName,
-        p_status: status
-      });
+  return data;
 
-      if (error) {
-        showMessage("Status update failed: " + error.message, "#ff5555");
-        return;
-      }
+}
 
-      showMessage(`${gameName} set to ${status}.`, "#10b981");
-      await renderGames();
-    }
+async function toggleVote(gameName) {
 
-    async function resetAllVotes() {
-      if (!isAdmin) return;
+  if (!currentUser) {
+    showMessage("Login first", "red");
+    return;
+  }
 
-      const ok = confirm("Reset all votes?");
-      if (!ok) return;
+  const { error } = await supabaseClient.rpc("toggle_vote", {
+    p_game_name: gameName
+  });
 
-      const { error } = await supabase.rpc("reset_all_votes");
+  if (error) {
+    showMessage(error.message, "red");
+    return;
+  }
 
-      if (error) {
-        showMessage("Reset failed: " + error.message, "#ff5555");
-        return;
-      }
+  renderGames();
 
-      showMessage("All votes reset.", "#10b981");
-      await renderGames();
-    }
+}
 
-    function statusClass(status) {
-      if (status === "finished") return "finished";
-      if (status === "excluded") return "excluded";
-      return "todo";
-    }
+async function setGameStatus(gameName, status) {
 
-    async function renderGames() {
-      const games = await fetchGames();
-      gamesContainer.innerHTML = "";
+  if (!isAdmin) return;
 
-      games.forEach(game => {
-        const div = document.createElement("div");
-        div.className = "game";
+  const { error } = await supabaseClient.rpc("set_game_status", {
+    p_game_name: gameName,
+    p_status: status
+  });
 
-        div.innerHTML = `
-          <div class="row">
-            <strong>${game.name}</strong>
-            <span class="${statusClass(game.status)}">[${game.status}]</span>
-            <span>Votes: ${game.vote_count}</span>
-            <button class="vote" data-vote="${game.name}">
-              ${game.user_voted ? "Unvote" : "Vote"}
-            </button>
-            ${isAdmin ? `
-              <button class="finish" data-finish="${game.name}">Finished</button>
-              <button class="exclude" data-exclude="${game.name}">Exclude</button>
-              <button class="reset" data-todo="${game.name}">Todo</button>
-            ` : ""}
-          </div>
-        `;
+  if (error) {
+    showMessage(error.message, "red");
+    return;
+  }
 
-        gamesContainer.appendChild(div);
-      });
+  renderGames();
 
-      document.querySelectorAll("[data-vote]").forEach(btn => {
-        btn.addEventListener("click", () => toggleVote(btn.dataset.vote));
-      });
+}
 
-      document.querySelectorAll("[data-finish]").forEach(btn => {
-        btn.addEventListener("click", () => setGameStatus(btn.dataset.finish, "finished"));
-      });
+async function resetAllVotes() {
 
-      document.querySelectorAll("[data-exclude]").forEach(btn => {
-        btn.addEventListener("click", () => setGameStatus(btn.dataset.exclude, "excluded"));
-      });
+  if (!isAdmin) return;
 
-      document.querySelectorAll("[data-todo]").forEach(btn => {
-        btn.addEventListener("click", () => setGameStatus(btn.dataset.todo, "todo"));
-      });
-    }
+  const { error } = await supabaseClient.rpc("reset_all_votes");
 
-    async function refreshSessionAndRender() {
-      const { data } = await supabase.auth.getSession();
-      currentUser = data?.session?.user || null;
+  if (error) {
+    showMessage(error.message, "red");
+    return;
+  }
 
-      if (currentUser) {
-        userInfo.textContent = `Logged in as: ${currentUser.email}`;
-        logoutBtn.style.display = "inline-block";
-      } else {
-        userInfo.textContent = "Not logged in";
-        logoutBtn.style.display = "none";
-      }
+  renderGames();
 
-      await fetchAdminStatus();
-      await renderGames();
-    }
+}
 
-    signupBtn.addEventListener("click", signUp);
-    loginBtn.addEventListener("click", logIn);
-    logoutBtn.addEventListener("click", logOut);
-    resetVotesBtn.addEventListener("click", resetAllVotes);
+function statusClass(status) {
 
-    supabase.auth.onAuthStateChange(async () => {
-      await refreshSessionAndRender();
-    });
+  if (status === "finished") return "finished";
+  if (status === "excluded") return "excluded";
+  return "todo";
 
-    refreshSessionAndRender();
-  </script>
+}
+
+async function renderGames() {
+
+  const games = await fetchGames();
+  gamesContainer.innerHTML = "";
+
+  games.forEach(game => {
+
+    const div = document.createElement("div");
+    div.className = "game";
+
+    div.innerHTML = `
+      <div class="row">
+        <strong>${game.name}</strong>
+        <span class="${statusClass(game.status)}">${game.status}</span>
+        <span>Votes: ${game.vote_count}</span>
+
+        <button class="vote" data-vote="${game.name}">
+          ${game.user_voted ? "Unvote" : "Vote"}
+        </button>
+
+        ${isAdmin ? `
+          <button class="finish" data-finish="${game.name}">Finished</button>
+          <button class="exclude" data-exclude="${game.name}">Exclude</button>
+          <button class="reset" data-todo="${game.name}">Todo</button>
+        ` : ""}
+      </div>
+    `;
+
+    gamesContainer.appendChild(div);
+
+  });
+
+  document.querySelectorAll("[data-vote]").forEach(btn => {
+    btn.onclick = () => toggleVote(btn.dataset.vote);
+  });
+
+  document.querySelectorAll("[data-finish]").forEach(btn => {
+    btn.onclick = () => setGameStatus(btn.dataset.finish, "finished");
+  });
+
+  document.querySelectorAll("[data-exclude]").forEach(btn => {
+    btn.onclick = () => setGameStatus(btn.dataset.exclude, "excluded");
+  });
+
+  document.querySelectorAll("[data-todo]").forEach(btn => {
+    btn.onclick = () => setGameStatus(btn.dataset.todo, "todo");
+  });
+
+}
+
+async function refreshSessionAndRender() {
+
+  const { data } = await supabaseClient.auth.getSession();
+  currentUser = data?.session?.user || null;
+
+  if (currentUser) {
+
+    userInfo.textContent = "Logged in as " + currentUser.email;
+    logoutBtn.style.display = "inline-block";
+
+  } else {
+
+    userInfo.textContent = "Not logged in";
+    logoutBtn.style.display = "none";
+
+  }
+
+  await fetchAdminStatus();
+  await renderGames();
+
+}
+
+signupBtn.onclick = signUp;
+loginBtn.onclick = logIn;
+logoutBtn.onclick = logOut;
+resetVotesBtn.onclick = resetAllVotes;
+
+supabaseClient.auth.onAuthStateChange(() => {
+  refreshSessionAndRender();
+});
+
+refreshSessionAndRender();
+
+</script>
 </body>
 </html>
