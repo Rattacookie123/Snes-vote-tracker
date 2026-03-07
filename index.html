@@ -1,62 +1,353 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>SNES Challenge Tracker</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNES Challenge Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{
+      background:#0b0b0b;
+      color:white;
+      font-family:Arial,sans-serif;
+      text-align:center;
+      padding:20px;
+      margin:0;
+    }
 
-<style>
-body{
-  background:#0b0b0b;
-  color:white;
-  font-family:Arial;
-  text-align:center;
-  padding:20px;
-}
+    h1{
+      margin-bottom:25px;
+    }
 
-.game{
-  background:#161616;
-  padding:12px;
-  margin:10px auto;
-  max-width:600px;
-  border-radius:8px;
-}
+    .panel{
+      background:#161616;
+      max-width:700px;
+      margin:0 auto 20px auto;
+      padding:16px;
+      border-radius:10px;
+    }
 
-button{
-  padding:6px 10px;
-  margin-left:10px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
+    input{
+      padding:10px;
+      margin:6px;
+      border:none;
+      border-radius:6px;
+      width:220px;
+    }
 
-.vote{background:#3b82f6;color:white}
-</style>
+    button{
+      padding:8px 12px;
+      margin:4px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:bold;
+    }
+
+    .vote{background:#3b82f6;color:white}
+    .finish{background:#10b981;color:white}
+    .exclude{background:#ef4444;color:white}
+    .reset{background:#f59e0b;color:black}
+    .logout{background:#6b7280;color:white}
+    .login{background:#2563eb;color:white}
+    .signup{background:#10b981;color:white}
+
+    .finished{color:#00ff9c}
+    .excluded{color:#ff5555}
+    .todo{color:#4da6ff}
+
+    .game{
+      background:#161616;
+      padding:12px;
+      margin:10px auto;
+      max-width:700px;
+      border-radius:8px;
+    }
+
+    .row{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .small{
+      font-size:14px;
+      opacity:0.9;
+    }
+
+    #message{
+      margin:10px 0 20px 0;
+      min-height:20px;
+    }
+  </style>
 </head>
-
 <body>
 
-<h1>SNES Challenge Tracker</h1>
+  <h1>SNES Challenge Tracker</h1>
 
-<div id="games"></div>
+  <div class="panel" id="authPanel">
+    <div class="row">
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+    </div>
+    <div class="row">
+      <button class="signup" id="signupBtn">Sign up</button>
+      <button class="login" id="loginBtn">Log in</button>
+      <button class="logout" id="logoutBtn" style="display:none;">Log out</button>
+    </div>
+    <div class="small" id="userInfo">Not logged in</div>
+  </div>
 
-<script>
-const games = [
-"Chrono Trigger",
-"Super Metroid",
-"Terranigma",
-"Secret of Mana",
-"ActRaiser"
-];
+  <div id="adminPanel" class="panel" style="display:none;">
+    <h3>Admin Panel</h3>
+    <button class="reset" id="resetVotesBtn">Reset All Votes</button>
+  </div>
 
-const container = document.getElementById("games");
+  <div id="message"></div>
+  <div id="games"></div>
 
-games.forEach(game=>{
-  const div=document.createElement("div");
-  div.className="game";
-  div.innerHTML=`${game} <button class="vote">Vote</button>`;
-  container.appendChild(div);
-});
-</script>
+  <script>
+    const SUPABASE_URL = "https://zucfkzsezszqpqgxfxcy.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Y2ZrenNlenN6cXBxZ3hmeGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4OTQ2MjEsImV4cCI6MjA4ODQ3MDYyMX0.xThmpDCkVhY4_fqFNuDalH-2zRAiiqoNk7oRk4xWvq8";
 
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const signupBtn = document.getElementById("signupBtn");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userInfo = document.getElementById("userInfo");
+    const adminPanel = document.getElementById("adminPanel");
+    const resetVotesBtn = document.getElementById("resetVotesBtn");
+    const gamesContainer = document.getElementById("games");
+    const messageEl = document.getElementById("message");
+
+    let currentUser = null;
+    let isAdmin = false;
+
+    function showMessage(text, color = "white") {
+      messageEl.textContent = text;
+      messageEl.style.color = color;
+    }
+
+    async function signUp() {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!email || !password) {
+        showMessage("Fill in email and password.", "#ff5555");
+        return;
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password
+      });
+
+      if (error) {
+        showMessage(error.message, "#ff5555");
+        return;
+      }
+
+      showMessage("Account created. If email confirmation is enabled, confirm your mail first.", "#10b981");
+    }
+
+    async function logIn() {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!email || !password) {
+        showMessage("Fill in email and password.", "#ff5555");
+        return;
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        showMessage(error.message, "#ff5555");
+        return;
+      }
+
+      showMessage("Logged in.", "#10b981");
+      await refreshSessionAndRender();
+    }
+
+    async function logOut() {
+      await supabase.auth.signOut();
+      showMessage("Logged out.", "#f59e0b");
+      await refreshSessionAndRender();
+    }
+
+    async function fetchAdminStatus() {
+      if (!currentUser) {
+        isAdmin = false;
+        adminPanel.style.display = "none";
+        return;
+      }
+
+      const { data, error } = await supabase.rpc("is_admin");
+
+      if (error) {
+        isAdmin = false;
+        adminPanel.style.display = "none";
+        return;
+      }
+
+      isAdmin = !!data;
+      adminPanel.style.display = isAdmin ? "block" : "none";
+    }
+
+    async function fetchGames() {
+      const { data, error } = await supabase.rpc("get_games_with_votes");
+
+      if (error) {
+        showMessage("Could not load games: " + error.message, "#ff5555");
+        return [];
+      }
+
+      return data || [];
+    }
+
+    async function toggleVote(gameName) {
+      if (!currentUser) {
+        showMessage("Log in first.", "#ff5555");
+        return;
+      }
+
+      const { data, error } = await supabase.rpc("toggle_vote", {
+        p_game_name: gameName
+      });
+
+      if (error) {
+        showMessage("Vote failed: " + error.message, "#ff5555");
+        return;
+      }
+
+      if (data?.user_voted) {
+        showMessage(`You voted for ${gameName}.`, "#10b981");
+      } else {
+        showMessage(`Your vote for ${gameName} was removed.`, "#f59e0b");
+      }
+
+      await renderGames();
+    }
+
+    async function setGameStatus(gameName, status) {
+      if (!isAdmin) return;
+
+      const { error } = await supabase.rpc("set_game_status", {
+        p_game_name: gameName,
+        p_status: status
+      });
+
+      if (error) {
+        showMessage("Status update failed: " + error.message, "#ff5555");
+        return;
+      }
+
+      showMessage(`${gameName} set to ${status}.`, "#10b981");
+      await renderGames();
+    }
+
+    async function resetAllVotes() {
+      if (!isAdmin) return;
+
+      const ok = confirm("Reset all votes?");
+      if (!ok) return;
+
+      const { error } = await supabase.rpc("reset_all_votes");
+
+      if (error) {
+        showMessage("Reset failed: " + error.message, "#ff5555");
+        return;
+      }
+
+      showMessage("All votes reset.", "#10b981");
+      await renderGames();
+    }
+
+    function statusClass(status) {
+      if (status === "finished") return "finished";
+      if (status === "excluded") return "excluded";
+      return "todo";
+    }
+
+    async function renderGames() {
+      const games = await fetchGames();
+      gamesContainer.innerHTML = "";
+
+      games.forEach(game => {
+        const div = document.createElement("div");
+        div.className = "game";
+
+        div.innerHTML = `
+          <div class="row">
+            <strong>${game.name}</strong>
+            <span class="${statusClass(game.status)}">[${game.status}]</span>
+            <span>Votes: ${game.vote_count}</span>
+            <button class="vote" data-vote="${game.name}">
+              ${game.user_voted ? "Unvote" : "Vote"}
+            </button>
+            ${isAdmin ? `
+              <button class="finish" data-finish="${game.name}">Finished</button>
+              <button class="exclude" data-exclude="${game.name}">Exclude</button>
+              <button class="reset" data-todo="${game.name}">Todo</button>
+            ` : ""}
+          </div>
+        `;
+
+        gamesContainer.appendChild(div);
+      });
+
+      document.querySelectorAll("[data-vote]").forEach(btn => {
+        btn.addEventListener("click", () => toggleVote(btn.dataset.vote));
+      });
+
+      document.querySelectorAll("[data-finish]").forEach(btn => {
+        btn.addEventListener("click", () => setGameStatus(btn.dataset.finish, "finished"));
+      });
+
+      document.querySelectorAll("[data-exclude]").forEach(btn => {
+        btn.addEventListener("click", () => setGameStatus(btn.dataset.exclude, "excluded"));
+      });
+
+      document.querySelectorAll("[data-todo]").forEach(btn => {
+        btn.addEventListener("click", () => setGameStatus(btn.dataset.todo, "todo"));
+      });
+    }
+
+    async function refreshSessionAndRender() {
+      const { data } = await supabase.auth.getSession();
+      currentUser = data?.session?.user || null;
+
+      if (currentUser) {
+        userInfo.textContent = `Logged in as: ${currentUser.email}`;
+        logoutBtn.style.display = "inline-block";
+      } else {
+        userInfo.textContent = "Not logged in";
+        logoutBtn.style.display = "none";
+      }
+
+      await fetchAdminStatus();
+      await renderGames();
+    }
+
+    signupBtn.addEventListener("click", signUp);
+    loginBtn.addEventListener("click", logIn);
+    logoutBtn.addEventListener("click", logOut);
+    resetVotesBtn.addEventListener("click", resetAllVotes);
+
+    supabase.auth.onAuthStateChange(async () => {
+      await refreshSessionAndRender();
+    });
+
+    refreshSessionAndRender();
+  </script>
 </body>
 </html>
