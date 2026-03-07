@@ -1,106 +1,162 @@
 <!DOCTYPE html>
-
 <html>
 <head>
-<title>SNES Challenge Tracker</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNES Challenge Tracker</title>
+  <style>
+    body {
+      background: #0b0b0b;
+      color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
 
-<style>
+    h1 {
+      margin-bottom: 10px;
+    }
 
-body{
-background:#0b0b0b;
-color:white;
-font-family:Arial;
-text-align:center;
-}
+    .topbar {
+      margin-bottom: 20px;
+    }
 
-button{
-padding:6px 10px;
-margin:4px;
-}
+    button {
+      padding: 8px 12px;
+      margin: 4px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
 
-.finished{
-color:#00ff9c;
-}
+    .vote-btn {
+      background: #3b82f6;
+      color: white;
+    }
 
-.excluded{
-color:#ff4444;
-}
+    .finish-btn {
+      background: #10b981;
+      color: white;
+    }
 
-.todo{
-color:#4da6ff;
-}
+    .exclude-btn {
+      background: #ef4444;
+      color: white;
+    }
 
-</style>
+    .reset-btn {
+      background: #f59e0b;
+      color: black;
+    }
 
+    .game-list {
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .game {
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .game-name {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .finished {
+      color: #00ff9c;
+    }
+
+    .excluded {
+      color: #ff5f5f;
+    }
+
+    .todo {
+      color: #5fa8ff;
+    }
+
+    .votes {
+      margin-bottom: 8px;
+      color: #ccc;
+    }
+  </style>
 </head>
-
 <body>
+  <h1>SNES Challenge Tracker</h1>
+  <div class="topbar">
+    <button class="reset-btn" onclick="resetVotes()">Reset All Votes</button>
+  </div>
 
-<h1>SNES Challenge Tracker</h1>
+  <div id="games" class="game-list"></div>
 
-<button onclick="resetVotes()">Reset Votes</button>
+  <script>
+    let games = [
+      { name: "Chrono Trigger", status: "todo", votes: 0 },
+      { name: "Super Metroid", status: "todo", votes: 0 },
+      { name: "Terranigma", status: "todo", votes: 0 },
+      { name: "Secret of Mana", status: "todo", votes: 0 },
+      { name: "ActRaiser", status: "todo", votes: 0 },
+      { name: "Lufia II: Rise of the Sinistrals", status: "todo", votes: 0 },
+      { name: "Final Fantasy VI", status: "todo", votes: 0 },
+      { name: "Super Mario Kart", status: "excluded", votes: 0 },
+      { name: "NBA Jam", status: "excluded", votes: 0 }
+    ];
 
-<div id="games"></div>
+    function drawGames() {
+      const container = document.getElementById("games");
+      container.innerHTML = "";
 
-<script>
+      games.forEach((game, index) => {
+        const div = document.createElement("div");
+        div.className = "game";
 
-let games = [
-{name:"Chrono Trigger",status:"todo",votes:0},
-{name:"Super Metroid",status:"todo",votes:0},
-{name:"Terranigma",status:"todo",votes:0},
-{name:"Secret of Mana",status:"todo",votes:0},
-{name:"ActRaiser",status:"todo",votes:0}
-]
+        div.innerHTML = `
+          <div class="game-name ${game.status}">${game.name}</div>
+          <div class="votes">Votes: ${game.votes}</div>
+          <button class="vote-btn" onclick="voteGame(${index})">Vote</button>
+          <button class="finish-btn" onclick="markFinished(${index})">Finished</button>
+          <button class="exclude-btn" onclick="markExcluded(${index})">Exclude</button>
+          <button onclick="markTodo(${index})">To Play</button>
+        `;
 
-function draw(){
+        container.appendChild(div);
+      });
+    }
 
-let html=""
+    function voteGame(index) {
+      games[index].votes++;
+      drawGames();
+    }
 
-games.forEach((g,i)=>{
+    function markFinished(index) {
+      games[index].status = "finished";
+      drawGames();
+    }
 
-html+=`
-<div class="${g.status}">
-${g.name} — Votes: ${g.votes}
+    function markExcluded(index) {
+      games[index].status = "excluded";
+      drawGames();
+    }
 
-<button onclick="vote(${i})">Vote</button>
-<button onclick="finish(${i})">Finished</button>
-<button onclick="exclude(${i})">Exclude</button>
+    function markTodo(index) {
+      games[index].status = "todo";
+      drawGames();
+    }
 
-</div>
-`
+    function resetVotes() {
+      games.forEach(game => game.votes = 0);
+      drawGames();
+    }
 
-})
-
-document.getElementById("games").innerHTML=html
-
-}
-
-function vote(i){
-games[i].votes++
-draw()
-}
-
-function finish(i){
-games[i].status="finished"
-draw()
-}
-
-function exclude(i){
-games[i].status="excluded"
-draw()
-}
-
-function resetVotes(){
-
-games.forEach(g=>g.votes=0)
-
-draw()
-
-}
-
-draw()
-
-</script>
-
+    drawGames();
+  </script>
 </body>
 </html>
