@@ -55,14 +55,14 @@ button{
 <h1>SNES Challenge Tracker</h1>
 
 <div class="topbar" id="topbar"></div>
-
 <div id="games"></div>
 
 <script>
+const STORAGE_KEY = "snes_tracker_data_v1";
 let admin = false;
 const password = "mike123";
 
-let games = [
+const defaultGames = [
   {name:"Chrono Trigger",status:"todo",votes:0},
   {name:"Super Metroid",status:"todo",votes:0},
   {name:"Terranigma",status:"todo",votes:0},
@@ -70,8 +70,29 @@ let games = [
   {name:"ActRaiser",status:"todo",votes:0}
 ];
 
+let games = loadGames();
+
+function loadGames(){
+  const saved = localStorage.getItem(STORAGE_KEY);
+
+  if(saved){
+    try{
+      return JSON.parse(saved);
+    }catch(e){
+      return [...defaultGames];
+    }
+  }
+
+  return [...defaultGames];
+}
+
+function saveGames(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
+}
+
 function adminLogin(){
   let p = prompt("Admin password");
+
   if(p === password){
     admin = true;
     draw();
@@ -117,26 +138,31 @@ function draw(){
 
 function vote(i){
   games[i].votes++;
+  saveGames();
   draw();
 }
 
 function finish(i){
   games[i].status = "finished";
+  saveGames();
   draw();
 }
 
 function exclude(i){
   games[i].status = "excluded";
+  saveGames();
   draw();
 }
 
 function todo(i){
   games[i].status = "todo";
+  saveGames();
   draw();
 }
 
 function resetVotes(){
   games.forEach(g => g.votes = 0);
+  saveGames();
   draw();
 }
 
