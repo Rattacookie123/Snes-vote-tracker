@@ -2,140 +2,145 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SNES Challenge Tracker</title>
 
 <style>
-
 body{
-background:#0b0b0b;
-color:white;
-font-family:Arial;
-text-align:center;
-padding:20px;
+  background:#0b0b0b;
+  color:white;
+  font-family:Arial,sans-serif;
+  text-align:center;
+  padding:20px;
+  margin:0;
 }
 
 button{
-padding:8px 12px;
-margin:4px;
-border:none;
-border-radius:6px;
-cursor:pointer;
+  padding:8px 12px;
+  margin:4px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:bold;
 }
 
 .vote{background:#3b82f6;color:white}
 .finish{background:#10b981;color:white}
 .exclude{background:#ef4444;color:white}
 .reset{background:#f59e0b;color:black}
+.admin{background:#8b5cf6;color:white}
+.todo-btn{background:#6b7280;color:white}
 
 .finished{color:#00ff9c}
 .excluded{color:#ff5555}
 .todo{color:#4da6ff}
 
 .game{
-background:#161616;
-padding:10px;
-margin:10px auto;
-max-width:600px;
-border-radius:8px;
+  background:#161616;
+  padding:10px;
+  margin:10px auto;
+  max-width:600px;
+  border-radius:8px;
+  border:1px solid #2a2a2a;
 }
 
+.topbar{
+  margin-bottom:20px;
+}
 </style>
-
 </head>
 
 <body>
 
 <h1>SNES Challenge Tracker</h1>
 
-<button class="reset" onclick="resetVotes()">Reset Votes</button>
-<button onclick="adminLogin()">Admin Login</button>
+<div class="topbar" id="topbar"></div>
 
 <div id="games"></div>
 
 <script>
+let admin = false;
+const password = "mike123";
 
-let admin=false
-const password="mike123"
-
-let games=[
-{name:"Chrono Trigger",status:"todo",votes:0},
-{name:"Super Metroid",status:"todo",votes:0},
-{name:"Terranigma",status:"todo",votes:0},
-{name:"Secret of Mana",status:"todo",votes:0},
-{name:"ActRaiser",status:"todo",votes:0}
-]
+let games = [
+  {name:"Chrono Trigger",status:"todo",votes:0},
+  {name:"Super Metroid",status:"todo",votes:0},
+  {name:"Terranigma",status:"todo",votes:0},
+  {name:"Secret of Mana",status:"todo",votes:0},
+  {name:"ActRaiser",status:"todo",votes:0}
+];
 
 function adminLogin(){
-
-let p=prompt("Admin password")
-
-if(p===password){
-admin=true
-draw()
-alert("Admin mode enabled")
-}
-
+  let p = prompt("Admin password");
+  if(p === password){
+    admin = true;
+    draw();
+    alert("Admin mode enabled");
+  } else if (p !== null) {
+    alert("Wrong password");
+  }
 }
 
 function draw(){
+  let topbarHtml = `<button class="admin" onclick="adminLogin()">Admin Login</button>`;
 
-let html=""
+  if(admin){
+    topbarHtml += `<button class="reset" onclick="resetVotes()">Reset Votes</button>`;
+  }
 
-games.forEach((g,i)=>{
+  document.getElementById("topbar").innerHTML = topbarHtml;
 
-let buttons=`<button class="vote" onclick="vote(${i})">Vote</button>`
+  let html = "";
 
-if(admin){
+  games.forEach((g,i)=>{
+    let buttons = `<button class="vote" onclick="vote(${i})">Vote</button>`;
 
-buttons+=`
-<button class="finish" onclick="finish(${i})">Finished</button>
-<button class="exclude" onclick="exclude(${i})">Exclude</button>
-<button onclick="todo(${i})">To Play</button>
-`
+    if(admin){
+      buttons += `
+        <button class="finish" onclick="finish(${i})">Finished</button>
+        <button class="exclude" onclick="exclude(${i})">Exclude</button>
+        <button class="todo-btn" onclick="todo(${i})">To Play</button>
+      `;
+    }
 
-}
+    html += `
+      <div class="game">
+        <div class="${g.status}"><b>${g.name}</b></div>
+        <div>Votes: ${g.votes}</div>
+        ${buttons}
+      </div>
+    `;
+  });
 
-html+=`
-<div class="game">
-<div class="${g.status}"><b>${g.name}</b></div>
-<div>Votes: ${g.votes}</div>
-${buttons}
-</div>
-`
-
-})
-
-document.getElementById("games").innerHTML=html
-
+  document.getElementById("games").innerHTML = html;
 }
 
 function vote(i){
-games[i].votes++
-draw()
+  games[i].votes++;
+  draw();
 }
 
 function finish(i){
-games[i].status="finished"
-draw()
+  games[i].status = "finished";
+  draw();
 }
 
 function exclude(i){
-games[i].status="excluded"
-draw()
+  games[i].status = "excluded";
+  draw();
 }
 
 function todo(i){
-games[i].status="todo"
-draw()
+  games[i].status = "todo";
+  draw();
 }
 
 function resetVotes(){
-games.forEach(g=>g.votes=0)
-draw()
+  games.forEach(g => g.votes = 0);
+  draw();
 }
 
-draw()
-
+draw();
 </script>
 
 </body>
