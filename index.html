@@ -142,17 +142,20 @@ async function signUp() {
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
 
-  const { error } = await supabaseClient.auth.signUp({
-    email,
-    password
-  });
+  const { data, error } = await supabaseClient.auth.signUp({
+  email,
+  password
+});
 
   if (error) {
     showMessage(error.message, "red");
     return;
   }
 
-  showMessage("Account created", "lime");
+  if (data.session) {
+  showMessage("Account created and logged in", "lime");
+} else {
+  showMessage("Check your email to confirm your account", "yellow");
 
 }
 
