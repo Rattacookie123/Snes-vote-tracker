@@ -1,14 +1,106 @@
 <!DOCTYPE html>
+
 <html>
 <head>
-<title>SNES Tracker</title>
+<title>SNES Challenge Tracker</title>
+
+<style>
+
+body{
+background:#0b0b0b;
+color:white;
+font-family:Arial;
+text-align:center;
+}
+
+button{
+padding:6px 10px;
+margin:4px;
+}
+
+.finished{
+color:#00ff9c;
+}
+
+.excluded{
+color:#ff4444;
+}
+
+.todo{
+color:#4da6ff;
+}
+
+</style>
+
 </head>
 
-<body style="background:black;color:white;font-family:Arial;text-align:center">
+<body>
 
 <h1>SNES Challenge Tracker</h1>
 
-<p>If you see this page, the website works.</p>
+<button onclick="resetVotes()">Reset Votes</button>
+
+<div id="games"></div>
+
+<script>
+
+let games = [
+{name:"Chrono Trigger",status:"todo",votes:0},
+{name:"Super Metroid",status:"todo",votes:0},
+{name:"Terranigma",status:"todo",votes:0},
+{name:"Secret of Mana",status:"todo",votes:0},
+{name:"ActRaiser",status:"todo",votes:0}
+]
+
+function draw(){
+
+let html=""
+
+games.forEach((g,i)=>{
+
+html+=`
+<div class="${g.status}">
+${g.name} — Votes: ${g.votes}
+
+<button onclick="vote(${i})">Vote</button>
+<button onclick="finish(${i})">Finished</button>
+<button onclick="exclude(${i})">Exclude</button>
+
+</div>
+`
+
+})
+
+document.getElementById("games").innerHTML=html
+
+}
+
+function vote(i){
+games[i].votes++
+draw()
+}
+
+function finish(i){
+games[i].status="finished"
+draw()
+}
+
+function exclude(i){
+games[i].status="excluded"
+draw()
+}
+
+function resetVotes(){
+
+games.forEach(g=>g.votes=0)
+
+draw()
+
+}
+
+draw()
+
+</script>
 
 </body>
 </html>
