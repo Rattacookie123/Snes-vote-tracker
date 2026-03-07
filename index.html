@@ -156,7 +156,7 @@ async function signUp() {
   showMessage("Account created and logged in", "lime");
 } else {
   showMessage("Check your email to confirm your account", "yellow");
-
+  }
 }
 
 async function logIn() {
@@ -328,7 +328,7 @@ async function renderGames() {
   document.querySelectorAll("[data-todo]").forEach(btn => {
     btn.onclick = () => setGameStatus(btn.dataset.todo, "todo");
   });
-
+}
 
 
 async function refreshSessionAndRender() {
