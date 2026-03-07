@@ -1,162 +1,94 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SNES Challenge Tracker</title>
-  <style>
-    body {
-      background: #0b0b0b;
-      color: white;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      text-align: center;
-    }
+<script>
 
-    h1 {
-      margin-bottom: 10px;
-    }
+let admin = false
+const adminPassword = "mike123"
 
-    .topbar {
-      margin-bottom: 20px;
-    }
+let games = [
+{ name:"Chrono Trigger", status:"todo", votes:0 },
+{ name:"Super Metroid", status:"todo", votes:0 },
+{ name:"Terranigma", status:"todo", votes:0 },
+{ name:"Secret of Mana", status:"todo", votes:0 },
+{ name:"ActRaiser", status:"todo", votes:0 },
+{ name:"Lufia II: Rise of the Sinistrals", status:"todo", votes:0 }
+]
 
-    button {
-      padding: 8px 12px;
-      margin: 4px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-    }
+function loginAdmin(){
 
-    .vote-btn {
-      background: #3b82f6;
-      color: white;
-    }
+let pass = prompt("Admin password")
 
-    .finish-btn {
-      background: #10b981;
-      color: white;
-    }
+if(pass === adminPassword){
+admin = true
+drawGames()
+alert("Admin mode enabled")
+}
 
-    .exclude-btn {
-      background: #ef4444;
-      color: white;
-    }
+}
 
-    .reset-btn {
-      background: #f59e0b;
-      color: black;
-    }
+function drawGames(){
 
-    .game-list {
-      max-width: 900px;
-      margin: 0 auto;
-      text-align: left;
-    }
+const container = document.getElementById("games")
+container.innerHTML = ""
 
-    .game {
-      background: #161616;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 10px;
-    }
+games.forEach((game,index)=>{
 
-    .game-name {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
+let buttons = `
+<button class="vote-btn" onclick="voteGame(${index})">Vote</button>
+`
 
-    .finished {
-      color: #00ff9c;
-    }
+if(admin){
 
-    .excluded {
-      color: #ff5f5f;
-    }
+buttons += `
+<button class="finish-btn" onclick="markFinished(${index})">Finished</button>
+<button class="exclude-btn" onclick="markExcluded(${index})">Exclude</button>
+<button onclick="markTodo(${index})">To Play</button>
+`
 
-    .todo {
-      color: #5fa8ff;
-    }
+}
 
-    .votes {
-      margin-bottom: 8px;
-      color: #ccc;
-    }
-  </style>
-</head>
-<body>
-  <h1>SNES Challenge Tracker</h1>
-  <div class="topbar">
-    <button class="reset-btn" onclick="resetVotes()">Reset All Votes</button>
-  </div>
+const div = document.createElement("div")
 
-  <div id="games" class="game-list"></div>
+div.className = "game"
 
-  <script>
-    let games = [
-      { name: "Chrono Trigger", status: "todo", votes: 0 },
-      { name: "Super Metroid", status: "todo", votes: 0 },
-      { name: "Terranigma", status: "todo", votes: 0 },
-      { name: "Secret of Mana", status: "todo", votes: 0 },
-      { name: "ActRaiser", status: "todo", votes: 0 },
-      { name: "Lufia II: Rise of the Sinistrals", status: "todo", votes: 0 },
-      { name: "Final Fantasy VI", status: "todo", votes: 0 },
-      { name: "Super Mario Kart", status: "excluded", votes: 0 },
-      { name: "NBA Jam", status: "excluded", votes: 0 }
-    ];
+div.innerHTML = `
+<div class="game-name ${game.status}">${game.name}</div>
+<div class="votes">Votes: ${game.votes}</div>
+${buttons}
+`
 
-    function drawGames() {
-      const container = document.getElementById("games");
-      container.innerHTML = "";
+container.appendChild(div)
 
-      games.forEach((game, index) => {
-        const div = document.createElement("div");
-        div.className = "game";
+})
 
-        div.innerHTML = `
-          <div class="game-name ${game.status}">${game.name}</div>
-          <div class="votes">Votes: ${game.votes}</div>
-          <button class="vote-btn" onclick="voteGame(${index})">Vote</button>
-          <button class="finish-btn" onclick="markFinished(${index})">Finished</button>
-          <button class="exclude-btn" onclick="markExcluded(${index})">Exclude</button>
-          <button onclick="markTodo(${index})">To Play</button>
-        `;
+}
 
-        container.appendChild(div);
-      });
-    }
+function voteGame(index){
+games[index].votes++
+drawGames()
+}
 
-    function voteGame(index) {
-      games[index].votes++;
-      drawGames();
-    }
+function markFinished(index){
+games[index].status="finished"
+drawGames()
+}
 
-    function markFinished(index) {
-      games[index].status = "finished";
-      drawGames();
-    }
+function markExcluded(index){
+games[index].status="excluded"
+drawGames()
+}
 
-    function markExcluded(index) {
-      games[index].status = "excluded";
-      drawGames();
-    }
+function markTodo(index){
+games[index].status="todo"
+drawGames()
+}
 
-    function markTodo(index) {
-      games[index].status = "todo";
-      drawGames();
-    }
+function resetVotes(){
 
-    function resetVotes() {
-      games.forEach(game => game.votes = 0);
-      drawGames();
-    }
+games.forEach(game => game.votes = 0)
 
-    drawGames();
-  </script>
-</body>
-</html>
+drawGames()
+
+}
+
+drawGames()
+
+</script>
