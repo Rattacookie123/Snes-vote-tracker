@@ -108,272 +108,253 @@
   <div id="message"></div>
   <div id="games"></div>
 
- <script>
-
-const SUPABASE_URL = "https://zucfkzsezszqpqgxfxcy.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_dDwuIpaYEaFgpQW_7Klg6g_VLumikbg";
-
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
-
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const signupBtn = document.getElementById("signupBtn");
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-const userInfo = document.getElementById("userInfo");
-const adminPanel = document.getElementById("adminPanel");
-const resetVotesBtn = document.getElementById("resetVotesBtn");
-const gamesContainer = document.getElementById("games");
-const messageEl = document.getElementById("message");
-
-let currentUser = null;
-let isAdmin = false;
-
-function showMessage(text, color = "white") {
-  messageEl.textContent = text;
-  messageEl.style.color = color;
-}
-
-async function signUp() {
-
-  const email = emailInput.value.trim();
-  const password = passwordInput.value.trim();
-
-  const { data, error } = await supabaseClient.auth.signUp({
-  email,
-  password
-});
-
-  if (error) {
-    showMessage(error.message, "red");
-    return;
-  }
-
-  if (data.session) {
-  showMessage("Account created and logged in", "lime");
-} else {
-  showMessage("Check your email to confirm your account", "yellow");
-  }
-}
-
-async function logIn() {
-
-  const email = emailInput.value.trim();
-  const password = passwordInput.value.trim();
-
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) {
-    showMessage(error.message, "red");
-    return;
-  }
-
-  showMessage("Logged in", "lime");
-  refreshSessionAndRender();
-}
-
-async function logOut() {
-
-  await supabaseClient.auth.signOut();
-  showMessage("Logged out", "orange");
-  refreshSessionAndRender();
-
-}
-
-async function fetchAdminStatus() {
-
-  if (!currentUser) {
-    isAdmin = false;
-    adminPanel.style.display = "none";
-    return;
-  }
-
-  const { data, error } = await supabaseClient.rpc("is_admin");
-
-  if (error) {
-    isAdmin = false;
-    adminPanel.style.display = "none";
-    return;
-  }
-
-  isAdmin = !!data;
-  adminPanel.style.display = isAdmin ? "block" : "none";
-
-}
-
-async function fetchGames() {
-
-  const { data, error } = await supabaseClient.rpc("get_games_with_votes");
-
-  if (error) {
-    showMessage(error.message, "red");
-    return [];
-  }
-
-  return data;
-
-}
-
-async function toggleVote(gameId) {
-  if (!currentUser) {
-    showMessage("Login first", "red");
-    return;
-  }
-
-  const { data, error } = await supabaseClient.rpc("toggle_vote", {
-    p_game_id: gameId
-  });
-
-  if (error) {
-    showMessage(error.message, "red");
-    return;
-  }
-
-  if (data === "voted") {
-    showMessage("Vote placed", "lime");
-  } else if (data === "unvoted") {
-    showMessage("Vote removed", "orange");
-  } else if (data === "already_voted_other") {
-    showMessage("You already voted on another game. Unvote that first.", "red");
-  }
-
-  renderGames();
-}
-
-  renderGames();
-
-}
-
-async function setGameStatus(gameName, status) {
-
-  if (!isAdmin) return;
-
-  const { error } = await supabaseClient.rpc("set_game_status", {
-    p_game_name: gameName,
-    p_status: status
-  });
-
-  if (error) {
-    showMessage(error.message, "red");
-    return;
-  }
-
-  renderGames();
-
-}
-
-async function resetAllVotes() {
-
-  if (!isAdmin) return;
-
-  const { error } = await supabaseClient.rpc("reset_all_votes");
-
-  if (error) {
-    showMessage(error.message, "red");
-    return;
-  }
-
-  renderGames();
-
-}
-
-function statusClass(status) {
-
-  if (status === "finished") return "finished";
-  if (status === "excluded") return "excluded";
-  return "todo";
-
-}
-
-async function renderGames() {
-
-  const games = await fetchGames();
-  gamesContainer.innerHTML = "";
-
-  games.forEach(game => {
-
-    const div = document.createElement("div");
-    div.className = "game";
-
-    div.innerHTML = `
-  <div class="row">
-    <strong>${game.name}</strong>
-    <span class="${statusClass(game.status)}">${game.status}</span>
-    <span>Votes: ${game.vote_count}</span>
-
-    <button class="vote" data-vote="${game.id}">
-      ${game.user_voted ? "Unvote" : "Vote"}
-    </button>
-
-    ${isAdmin ? `
-      <button class="finish" data-finish="${game.name}">Finished</button>
-      <button class="exclude" data-exclude="${game.name}">Exclude</button>
-      <button class="reset" data-todo="${game.name}">Todo</button>
-    ` : ""}
-  </div>
-`;
-
-    gamesContainer.appendChild(div);
-
-  });
-
-  document.querySelectorAll("[data-vote]").forEach(btn => {
-    btn.onclick = () => toggleVote(btn.dataset.vote);
-  });
-
-  document.querySelectorAll("[data-finish]").forEach(btn => {
-    btn.onclick = () => setGameStatus(btn.dataset.finish, "finished");
-  });
-
-  document.querySelectorAll("[data-exclude]").forEach(btn => {
-    btn.onclick = () => setGameStatus(btn.dataset.exclude, "excluded");
-  });
-
-  document.querySelectorAll("[data-todo]").forEach(btn => {
-    btn.onclick = () => setGameStatus(btn.dataset.todo, "todo");
-  });
-}
-
-
-async function refreshSessionAndRender() {
-
-  const { data } = await supabaseClient.auth.getSession();
-  currentUser = data?.session?.user || null;
-
-  if (currentUser) {
-
-    userInfo.textContent = "Logged in as " + currentUser.email;
-    logoutBtn.style.display = "inline-block";
-
-  } else {
-
-    userInfo.textContent = "Not logged in";
-    logoutBtn.style.display = "none";
-
-  }
-
-  await fetchAdminStatus();
-  await renderGames();
-
-}
-
-signupBtn.onclick = signUp;
-loginBtn.onclick = logIn;
-logoutBtn.onclick = logOut;
-resetVotesBtn.onclick = resetAllVotes;
-
-supabaseClient.auth.onAuthStateChange(() => {
-  refreshSessionAndRender();
-});
-
-refreshSessionAndRender();
-
-</script>
+  <script>
+    const SUPABASE_URL = "https://zucfkzsezszqpqgxfxcy.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_dDwuIpaYEaFgpQW_7Klg6g_VLumikbg";
+
+    const supabaseClient = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    );
+
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const signupBtn = document.getElementById("signupBtn");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userInfo = document.getElementById("userInfo");
+    const adminPanel = document.getElementById("adminPanel");
+    const resetVotesBtn = document.getElementById("resetVotesBtn");
+    const gamesContainer = document.getElementById("games");
+    const messageEl = document.getElementById("message");
+
+    let currentUser = null;
+    let isAdmin = false;
+
+    function showMessage(text, color = "white") {
+      messageEl.textContent = text;
+      messageEl.style.color = color;
+    }
+
+    function statusClass(status) {
+      if (status === "finished") return "finished";
+      if (status === "excluded") return "excluded";
+      return "todo";
+    }
+
+    async function signUp() {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password
+      });
+
+      if (error) {
+        showMessage(error.message, "red");
+        return;
+      }
+
+      if (data.session) {
+        showMessage("Account created and logged in", "lime");
+      } else {
+        showMessage("Check your email to confirm your account", "yellow");
+      }
+
+      await refreshSessionAndRender();
+    }
+
+    async function logIn() {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        showMessage(error.message, "red");
+        return;
+      }
+
+      showMessage("Logged in", "lime");
+      await refreshSessionAndRender();
+    }
+
+    async function logOut() {
+      const { error } = await supabaseClient.auth.signOut();
+
+      if (error) {
+        showMessage(error.message, "red");
+        return;
+      }
+
+      showMessage("Logged out", "orange");
+      await refreshSessionAndRender();
+    }
+
+    async function fetchAdminStatus() {
+      if (!currentUser) {
+        isAdmin = false;
+        adminPanel.style.display = "none";
+        return;
+      }
+
+      const { data, error } = await supabaseClient.rpc("is_admin");
+
+      if (error) {
+        isAdmin = false;
+        adminPanel.style.display = "none";
+        return;
+      }
+
+      isAdmin = !!data;
+      adminPanel.style.display = isAdmin ? "block" : "none";
+    }
+
+    async function fetchGames() {
+      const { data, error } = await supabaseClient.rpc("get_games_with_votes");
+
+      if (error) {
+        showMessage(error.message, "red");
+        return [];
+      }
+
+      return data || [];
+    }
+
+    async function toggleVote(gameId) {
+      if (!currentUser) {
+        showMessage("Login first", "red");
+        return;
+      }
+
+      const { data, error } = await supabaseClient.rpc("toggle_vote", {
+        p_game_id: Number(gameId)
+      });
+
+      if (error) {
+        showMessage(error.message, "red");
+        return;
+      }
+
+      if (data === "voted") {
+        showMessage("Vote placed", "lime");
+      } else if (data === "unvoted") {
+        showMessage("Vote removed", "orange");
+      } else if (data === "already_voted_other") {
+        showMessage("You already voted on another game. Unvote that first.", "red");
+      } else {
+        showMessage("Vote updated", "lime");
+      }
+
+      await renderGames();
+    }
+
+    async function setGameStatus(gameName, status) {
+      if (!isAdmin) return;
+
+      const { error } = await supabaseClient.rpc("set_game_status", {
+        p_game_name: gameName,
+        p_status: status
+      });
+
+      if (error) {
+        showMessage(error.message, "red");
+        return;
+      }
+
+      await renderGames();
+    }
+
+    async function resetAllVotes() {
+      if (!isAdmin) return;
+
+      const { error } = await supabaseClient.rpc("reset_all_votes");
+
+      if (error) {
+        showMessage(error.message, "red");
+        return;
+      }
+
+      showMessage("All votes reset", "orange");
+      await renderGames();
+    }
+
+    async function renderGames() {
+      const games = await fetchGames();
+      gamesContainer.innerHTML = "";
+
+      games.forEach((game) => {
+        const div = document.createElement("div");
+        div.className = "game";
+
+        div.innerHTML = `
+          <div class="row">
+            <strong>${game.name}</strong>
+            <span class="${statusClass(game.status)}">${game.status}</span>
+            <span>Votes: ${game.vote_count}</span>
+
+            <button class="vote" data-vote="${game.id}">
+              ${game.user_voted ? "Unvote" : "Vote"}
+            </button>
+
+            ${isAdmin ? `
+              <button class="finish" data-finish="${game.name}">Finished</button>
+              <button class="exclude" data-exclude="${game.name}">Exclude</button>
+              <button class="reset" data-todo="${game.name}">Todo</button>
+            ` : ""}
+          </div>
+        `;
+
+        gamesContainer.appendChild(div);
+      });
+
+      document.querySelectorAll("[data-vote]").forEach((btn) => {
+        btn.onclick = () => toggleVote(btn.dataset.vote);
+      });
+
+      document.querySelectorAll("[data-finish]").forEach((btn) => {
+        btn.onclick = () => setGameStatus(btn.dataset.finish, "finished");
+      });
+
+      document.querySelectorAll("[data-exclude]").forEach((btn) => {
+        btn.onclick = () => setGameStatus(btn.dataset.exclude, "excluded");
+      });
+
+      document.querySelectorAll("[data-todo]").forEach((btn) => {
+        btn.onclick = () => setGameStatus(btn.dataset.todo, "todo");
+      });
+    }
+
+    async function refreshSessionAndRender() {
+      const { data } = await supabaseClient.auth.getSession();
+      currentUser = data?.session?.user || null;
+
+      if (currentUser) {
+        userInfo.textContent = "Logged in as " + currentUser.email;
+        logoutBtn.style.display = "inline-block";
+      } else {
+        userInfo.textContent = "Not logged in";
+        logoutBtn.style.display = "none";
+      }
+
+      await fetchAdminStatus();
+      await renderGames();
+    }
+
+    signupBtn.onclick = signUp;
+    loginBtn.onclick = logIn;
+    logoutBtn.onclick = logOut;
+    resetVotesBtn.onclick = resetAllVotes;
+
+    supabaseClient.auth.onAuthStateChange(() => {
+      refreshSessionAndRender();
+    });
+
+    refreshSessionAndRender();
+  </script>
 </body>
 </html>
