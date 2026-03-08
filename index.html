@@ -262,7 +262,7 @@ async function resetAllVotes() {
 
   if (!isAdmin) return;
 
-  const { error } = await supabaseClient.rpc("reset_votes");
+  const { error } = await supabaseClient.rpc("reset_all_votes");
 
   if (error) {
     showMessage(error.message, "red");
