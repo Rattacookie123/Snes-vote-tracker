@@ -220,21 +220,31 @@ async function fetchGames() {
 
 }
 
-async function toggleVote(gameName) {
-
+async function toggleVote(gameId) {
   if (!currentUser) {
     showMessage("Login first", "red");
     return;
   }
 
-  const { error } = await supabaseClient.rpc("toggle_vote", {
-    p_game_name: gameName
+  const { data, error } = await supabaseClient.rpc("toggle_vote", {
+    p_game_id: gameId
   });
 
   if (error) {
     showMessage(error.message, "red");
     return;
   }
+
+  if (data === "voted") {
+    showMessage("Vote placed", "lime");
+  } else if (data === "unvoted") {
+    showMessage("Vote removed", "orange");
+  } else if (data === "already_voted_other") {
+    showMessage("You already voted on another game. Unvote that first.", "red");
+  }
+
+  renderGames();
+}
 
   renderGames();
 
@@ -292,22 +302,22 @@ async function renderGames() {
     div.className = "game";
 
     div.innerHTML = `
-      <div class="row">
-        <strong>${game.name}</strong>
-        <span class="${statusClass(game.status)}">${game.status}</span>
-        <span>Votes: ${game.vote_count}</span>
+  <div class="row">
+    <strong>${game.name}</strong>
+    <span class="${statusClass(game.status)}">${game.status}</span>
+    <span>Votes: ${game.vote_count}</span>
 
-        <button class="vote" data-vote="${game.name}">
-          ${game.user_voted ? "Unvote" : "Vote"}
-        </button>
+    <button class="vote" data-vote="${game.id}">
+      ${game.user_voted ? "Unvote" : "Vote"}
+    </button>
 
-        ${isAdmin ? `
-          <button class="finish" data-finish="${game.name}">Finished</button>
-          <button class="exclude" data-exclude="${game.name}">Exclude</button>
-          <button class="reset" data-todo="${game.name}">Todo</button>
-        ` : ""}
-      </div>
-    `;
+    ${isAdmin ? `
+      <button class="finish" data-finish="${game.name}">Finished</button>
+      <button class="exclude" data-exclude="${game.name}">Exclude</button>
+      <button class="reset" data-todo="${game.name}">Todo</button>
+    ` : ""}
+  </div>
+`;
 
     gamesContainer.appendChild(div);
 
