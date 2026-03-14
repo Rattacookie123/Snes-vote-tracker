@@ -7,11 +7,15 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body{
-      background:#0b0b0b;
+      background:
+        linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.72)),
+        url("background.png") center center / cover no-repeat fixed;
       color:white;
-      font-family:Arial,sans-serif;
+      font-family:"Bahnschrift SemiCondensed", "Bahnschrift", "Arial Narrow", Arial, sans-serif;
+      font-size:18px;
       text-align:center;
       padding:20px;
+      padding-top:88px;
       margin:0;
     }
 
@@ -19,12 +23,22 @@
       margin-bottom:25px;
     }
 
+    .topBar{
+      position:fixed;
+      top:16px;
+      right:16px;
+      z-index:10;
+      display:flex;
+      justify-content:flex-end;
+    }
+
     .panel{
-      background:#161616;
+      background:rgba(22, 22, 22, 0.88);
       max-width:700px;
       margin:0 auto 20px auto;
       padding:16px;
       border-radius:10px;
+      backdrop-filter:blur(4px);
     }
 
     input{
@@ -44,9 +58,20 @@
       font-weight:bold;
     }
 
-    .vote{background:#3b82f6;color:white}
+    .vote{
+      background:url("button.png") center center / contain no-repeat;
+      color:transparent;
+      width:145px;
+      height:78px;
+      padding:0;
+      font-size:0;
+      line-height:0;
+      flex:0 0 auto;
+      filter:brightness(1.15) contrast(1.12) saturate(1.05);
+    }
     .finish{background:#10b981;color:white}
     .exclude{background:#ef4444;color:white}
+    .delete{background:#991b1b;color:white}
     .reset{background:#f59e0b;color:black}
     .logout{background:#6b7280;color:white}
     .login{background:#2563eb;color:white}
@@ -57,11 +82,12 @@
     .todo{color:#4da6ff}
 
     .game{
-      background:#161616;
+      background:rgba(22, 22, 22, 0.88);
       padding:12px;
       margin:10px auto;
       max-width:700px;
       border-radius:8px;
+      backdrop-filter:blur(4px);
     }
 
     .row{
@@ -77,6 +103,53 @@
       opacity:0.9;
     }
 
+    .searchPanel{
+      background:rgba(22, 22, 22, 0.88);
+      padding:10px;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      backdrop-filter:blur(4px);
+    }
+
+    .searchPanel input{
+      margin:0;
+    }
+
+    .search{
+      background:#22c55e;
+      color:black;
+    }
+
+    .game.match{
+      outline:2px solid #22c55e;
+      box-shadow:0 0 0 4px rgba(34, 197, 94, 0.2);
+    }
+
+    @media (max-width: 700px) {
+      body{
+        padding-top:140px;
+      }
+
+      .topBar{
+        left:16px;
+        right:16px;
+      }
+
+      .searchPanel{
+        width:100%;
+        justify-content:center;
+      }
+
+      .searchPanel input{
+        width:100%;
+        max-width:none;
+      }
+    }
+
     #message{
       margin:10px 0 20px 0;
       min-height:20px;
@@ -86,6 +159,13 @@
 <body>
 
   <h1>SNES Challenge Tracker</h1>
+
+  <div class="topBar">
+    <div class="searchPanel">
+      <input type="text" id="searchInput" placeholder="Search games" />
+      <button class="search" id="searchBtn">Search</button>
+    </div>
+  </div>
 
   <div class="panel" id="authPanel">
     <div class="row">
@@ -122,6 +202,8 @@
     const signupBtn = document.getElementById("signupBtn");
     const loginBtn = document.getElementById("loginBtn");
     const logoutBtn = document.getElementById("logoutBtn");
+    const searchInput = document.getElementById("searchInput");
+    const searchBtn = document.getElementById("searchBtn");
     const userInfo = document.getElementById("userInfo");
     const adminPanel = document.getElementById("adminPanel");
     const resetVotesBtn = document.getElementById("resetVotesBtn");
@@ -130,6 +212,9 @@
 
     let currentUser = null;
     let isAdmin = false;
+    let lastSearchTerm = "";
+    let lastSearchIndex = -1;
+    let realtimeChannel = null;
 
     function showMessage(text, color = "white") {
       messageEl.textContent = text;
@@ -140,6 +225,48 @@
       if (status === "finished") return "finished";
       if (status === "excluded") return "excluded";
       return "todo";
+    }
+
+    function clearSearchMatch() {
+      document.querySelectorAll(".game.match").forEach((gameCard) => {
+        gameCard.classList.remove("match");
+      });
+    }
+
+    function searchGame() {
+      const term = searchInput.value.trim().toLowerCase();
+
+      clearSearchMatch();
+
+      if (!term) {
+        lastSearchTerm = "";
+        lastSearchIndex = -1;
+        showMessage("Type a game name to search", "yellow");
+        return;
+      }
+
+      const matches = Array.from(document.querySelectorAll(".game")).filter((card) => {
+        return (card.dataset.gameName || "").includes(term);
+      });
+
+      if (matches.length === 0) {
+        lastSearchTerm = term;
+        lastSearchIndex = -1;
+        showMessage("Game not found", "red");
+        return;
+      }
+
+      if (term !== lastSearchTerm) {
+        lastSearchTerm = term;
+        lastSearchIndex = 0;
+      } else {
+        lastSearchIndex = (lastSearchIndex + 1) % matches.length;
+      }
+
+      const match = matches[lastSearchIndex];
+      match.classList.add("match");
+      match.scrollIntoView({ behavior: "smooth", block: "center" });
+      showMessage(`Jumped to ${match.dataset.displayName} (${lastSearchIndex + 1}/${matches.length})`, "lime");
     }
 
     async function signUp() {
@@ -253,11 +380,11 @@
       await renderGames();
     }
 
-    async function setGameStatus(gameName, status) {
+    async function setGameStatus(gameId, status) {
       if (!isAdmin) return;
 
       const { error } = await supabaseClient.rpc("set_game_status", {
-        p_game_name: gameName,
+        p_game_id: Number(gameId),
         p_status: status
       });
 
@@ -283,6 +410,25 @@
       await renderGames();
     }
 
+    async function deleteGame(gameId, gameName) {
+      if (!isAdmin) return;
+
+      const confirmed = window.confirm(`Delete "${gameName}"? This cannot be undone.`);
+      if (!confirmed) return;
+
+      const { error } = await supabaseClient.rpc("delete_game", {
+        p_game_id: Number(gameId)
+      });
+
+      if (error) {
+        showMessage(error.message, "red");
+        return;
+      }
+
+      showMessage(`Deleted ${gameName}`, "orange");
+      await renderGames();
+    }
+
     async function renderGames() {
       const games = await fetchGames();
       gamesContainer.innerHTML = "";
@@ -290,24 +436,61 @@
       games.forEach((game) => {
         const div = document.createElement("div");
         div.className = "game";
+        div.dataset.gameName = game.name.toLowerCase();
+        div.dataset.displayName = game.name;
 
-        div.innerHTML = `
-          <div class="row">
-            <strong>${game.name}</strong>
-            <span class="${statusClass(game.status)}">${game.status}</span>
-            <span>Votes: ${game.vote_count}</span>
+        const row = document.createElement("div");
+        row.className = "row";
 
-            <button class="vote" data-vote="${game.id}">
-              ${game.user_voted ? "Unvote" : "Vote"}
-            </button>
+        const nameEl = document.createElement("strong");
+        nameEl.textContent = game.name;
+        row.appendChild(nameEl);
 
-            ${isAdmin ? `
-              <button class="finish" data-finish="${game.name}">Finished</button>
-              <button class="exclude" data-exclude="${game.name}">Exclude</button>
-              <button class="reset" data-todo="${game.name}">Todo</button>
-            ` : ""}
-          </div>
-        `;
+        const statusEl = document.createElement("span");
+        statusEl.className = statusClass(game.status);
+        statusEl.textContent = game.status;
+        row.appendChild(statusEl);
+
+        const votesEl = document.createElement("span");
+        votesEl.textContent = `Votes: ${game.vote_count}`;
+        row.appendChild(votesEl);
+
+        const voteBtn = document.createElement("button");
+        voteBtn.className = "vote";
+        voteBtn.dataset.vote = String(game.id);
+        voteBtn.setAttribute("aria-label", game.user_voted ? "Unvote" : "Vote");
+        voteBtn.title = game.user_voted ? "Unvote" : "Vote";
+        voteBtn.textContent = game.user_voted ? "Unvote" : "Vote";
+        row.appendChild(voteBtn);
+
+        if (isAdmin) {
+          const finishBtn = document.createElement("button");
+          finishBtn.className = "finish";
+          finishBtn.dataset.finish = String(game.id);
+          finishBtn.textContent = "Finished";
+          row.appendChild(finishBtn);
+
+          const excludeBtn = document.createElement("button");
+          excludeBtn.className = "exclude";
+          excludeBtn.dataset.exclude = String(game.id);
+          excludeBtn.textContent = "Exclude";
+          row.appendChild(excludeBtn);
+
+          const todoBtn = document.createElement("button");
+          todoBtn.className = "reset";
+          todoBtn.dataset.todo = String(game.id);
+          todoBtn.textContent = "Todo";
+          row.appendChild(todoBtn);
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete";
+          deleteBtn.dataset.delete = String(game.id);
+          deleteBtn.dataset.name = game.name;
+          deleteBtn.textContent = "Delete";
+          row.appendChild(deleteBtn);
+        }
+
+        div.appendChild(row);
 
         gamesContainer.appendChild(div);
       });
@@ -327,6 +510,32 @@
       document.querySelectorAll("[data-todo]").forEach((btn) => {
         btn.onclick = () => setGameStatus(btn.dataset.todo, "todo");
       });
+
+      document.querySelectorAll("[data-delete]").forEach((btn) => {
+        btn.onclick = () => deleteGame(btn.dataset.delete, btn.dataset.name);
+      });
+    }
+
+    function subscribeToRealtime() {
+      if (realtimeChannel) return;
+
+      realtimeChannel = supabaseClient
+        .channel("public-live-updates")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "games" },
+          () => {
+            renderGames();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "votes" },
+          () => {
+            renderGames();
+          }
+        )
+        .subscribe();
     }
 
     async function refreshSessionAndRender() {
@@ -348,12 +557,20 @@
     signupBtn.onclick = signUp;
     loginBtn.onclick = logIn;
     logoutBtn.onclick = logOut;
+    searchBtn.onclick = searchGame;
     resetVotesBtn.onclick = resetAllVotes;
+
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        searchGame();
+      }
+    });
 
     supabaseClient.auth.onAuthStateChange(() => {
       refreshSessionAndRender();
     });
 
+    subscribeToRealtime();
     refreshSessionAndRender();
   </script>
 </body>
